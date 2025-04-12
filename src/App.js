@@ -50,7 +50,7 @@ function CalculadoraV1() {
   };
 
   return (
-    <div className="max-w-xs mx-auto p-4 flex flex-col items-center gap-6 font-thin">
+    <div className="max-w-sm mx-auto mt-10 p-6 bg-gray-100 rounded-2xl shadow-lg flex flex-col items-center gap-6 font-light">
       <h2 className="text-4xl text-center mb-2 text-gray-1000">Calculadora v1</h2>
       <div className="grid grid-cols-2 gap-2 w-full">
         <input
@@ -111,9 +111,26 @@ function CalculadoraV2() {
   }
 
   const handleKeyDown = (e) => {
+    const teclasPermitidas = "0123456789+-*/().";
+    const teclasEspeciales = ["Enter", "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Tab"];
+
+    if (
+      !teclasPermitidas.includes(e.key) &&
+      !teclasEspeciales.includes(e.key)
+    ) {
+      e.preventDefault();
+    }
+
     if (e.key === "Enter") {
       calcularResultado();
     }
+
+  };
+
+
+  const borrarUltimo = () => {
+    setInput(input.slice(0, -1));
+    inputRef.current.focus();
   };
 
   const calcularResultado = () => {
@@ -126,38 +143,237 @@ function CalculadoraV2() {
   };
 
   return (
-    <div className="max-w-xs mx-auto p-4 flex flex-col items-center gap-6 font-thin">
-      <h2 className="text-4xl text-center mb-2 text-gray-1000">Calculadora v2</h2>
-      <div>
+    <div className="max-w-sm mx-auto mt-10 p-6 bg-gray-100 rounded-2xl shadow-lg flex flex-col items-center gap-6 font-light">
+      <h2 className="text-3xl text-center text-gray-800">Calculadora v2</h2>
+
+      <input
+        ref={inputRef}
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="w-full p-3 text-xl border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+
+      <div className="grid grid-cols-4 gap-3 w-full">
+        {["7", "8", "9", "/",
+          "4", "5", "6", "*",
+          "1", "2", "3", "-",
+          "0", ".", "⌫", "+",
+          "C"].map((btn) => (
+            <button
+              key={btn}
+              onClick={() => {
+                if (btn === "C") {
+                  setInput("");
+                  setResultado(0);
+                } else if (btn === "⌫") {
+                  borrarUltimo();
+                } else {
+                  handleButtonClick(btn);
+                }
+              }}
+              className="bg-white hover:bg-blue-100 text-xl text-gray-800 py-3 rounded-lg shadow"
+            >
+              {btn}
+            </button>
+          ))}
+        <button
+          onClick={calcularResultado}
+          className="col-span-4 bg-blue-500 hover:bg-blue-600 text-white text-xl py-3 rounded-lg shadow mt-2"
+        >
+          =
+        </button>
+      </div>
+
+      <h3 className="text-xl text-gray-700">Resultado: {resultado}</h3>
+    </div>
+  );
+}
+
+function CalculadoraV3() {
+  const [input, setInput] = useState("");
+  const [resultado, setResultado] = useState(0);
+  const [historial, setHistorial] = useState([]);
+  const [indiceHistorial, setIndiceHistorial] = useState(-1);
+  const inputRef = useRef(null);
+
+  const operadores = ["+", "-", "*", "/", "(", ")"];
+
+  const handleButtonClick = (value) => {
+    const ultimoCaracter = input.slice(-1);
+
+    if (["+", "-", "*", "/"].includes(value) && ["+", "-", "*", "/"].includes(ultimoCaracter)) {
+      return;
+    }
+
+    if (value === ".") {
+      const ultimoNumero = input.split(/[\+\-\*\/\(\)]/).pop();
+      if (ultimoNumero.includes(".")) return;
+    }
+
+    if (["+", "*", "/", ")"].includes(value) && input === "") {
+      return;
+    }
+
+    if (value === "(" && input !== "" && !operadores.includes(ultimoCaracter)) {
+      // Insertar multiplicación implícita: ej. 2(3+1) => 2*(3+1)
+      setInput(input + "*" + value);
+    } else {
+      setInput(input + value);
+    }
+
+    inputRef.current.focus();
+  };
+
+  const calcularResultado = () => {
+    try {
+      const calcular = new Function(`return ${input}`);
+      const res = calcular();
+      setResultado(res);
+
+      const nuevaOperacion = `${input} = ${res}`;
+      setHistorial((prev) => {
+        const actualizado = [nuevaOperacion, ...prev];
+        return actualizado.slice(0, 10);
+      });
+
+      setIndiceHistorial(-1);
+    } catch {
+      setResultado("Error");
+    }
+  };
+
+  const borrarUltimo = () => {
+    setInput(input.slice(0, -1));
+    inputRef.current.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    const teclasPermitidas = "0123456789+-*/().";
+    const teclasEspeciales = ["Enter", "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Tab"];
+
+    if (
+      !teclasPermitidas.includes(e.key) &&
+      !teclasEspeciales.includes(e.key)
+    ) {
+      e.preventDefault();
+    }
+    if (e.key === "Enter") {
+      calcularResultado();
+    } else if (e.key === "ArrowUp") {
+      if (historial.length === 0) return;
+      const nuevoIndice = Math.min(indiceHistorial + 1, historial.length - 1);
+      setIndiceHistorial(nuevoIndice);
+      const operacion = historial[nuevoIndice]?.split(" = ")[0];
+      if (operacion) setInput(operacion);
+    } else if (e.key === "ArrowDown") {
+      if (indiceHistorial <= 0) {
+        setIndiceHistorial(-1);
+        setInput("");
+      } else {
+        const nuevoIndice = indiceHistorial - 1;
+        setIndiceHistorial(nuevoIndice);
+        const operacion = historial[nuevoIndice]?.split(" = ")[0];
+        if (operacion) setInput(operacion);
+      }
+    }
+  };
+
+  return (
+    <div className="max-w-sm mx-auto mt-10 p-6 bg-gray-100 rounded-2xl shadow-lg flex flex-col items-center gap-6 font-light">
+      <h2 className="text-3xl text-center text-gray-800">Calculadora v3</h2>
+
+      <div className="relative w-full">
         <input
           ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="p-2 border border-gray-300 rounded-lg"
+          className="w-full p-3 text-xl border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 pr-16"
         />
+        <div className="absolute top-1/2 right-2 flex flex-col -translate-y-1/2 gap-0.5">
+          <button
+            onClick={() => {
+              if (historial.length === 0) return;
+              const nuevoIndice = Math.min(indiceHistorial + 1, historial.length - 1);
+              setIndiceHistorial(nuevoIndice);
+              const operacion = historial[nuevoIndice]?.split(" = ")[0];
+              if (operacion) setInput(operacion);
+              inputRef.current.focus();
+            }}
+            className="text-xl px-2 rounded hover:bg-gray-200"
+            title="Historial anterior"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => {
+              if (indiceHistorial <= 0) {
+                setIndiceHistorial(-1);
+                setInput("");
+              } else {
+                const nuevoIndice = indiceHistorial - 1;
+                setIndiceHistorial(nuevoIndice);
+                const operacion = historial[nuevoIndice]?.split(" = ")[0];
+                if (operacion) setInput(operacion);
+              }
+              inputRef.current.focus();
+            }}
+            className="text-xl px-2 rounded hover:bg-gray-200"
+            title="Historial siguiente"
+          >
+            ↓
+          </button>
+        </div>
       </div>
-      <div>
-        <button onClick={() => handleButtonClick("0")}>0</button>
-        <button onClick={() => handleButtonClick("1")}>1</button>
-        <button onClick={() => handleButtonClick("2")}>2</button>
-        <button onClick={() => handleButtonClick("3")}>3</button>
-        <button onClick={() => handleButtonClick("4")}>4</button>
-        <button onClick={() => handleButtonClick("5")}>5</button>
-        <button onClick={() => handleButtonClick("6")}>6</button>
-        <button onClick={() => handleButtonClick("7")}>7</button>
-        <button onClick={() => handleButtonClick("8")}>8</button>
-        <button onClick={() => handleButtonClick("9")}>9</button>
-        <button onClick={() => handleButtonClick(".")}>.</button>
-        <button onClick={() => handleButtonClick("+")}>+</button>
-        <button onClick={() => handleButtonClick("-")}>-</button>
-        <button onClick={() => handleButtonClick("*")}>*</button>
-        <button onClick={() => handleButtonClick("/")}>/</button>
-        <button onClick={() => { setInput(""); setResultado(0); }}>C</button>
-        <button onClick={calcularResultado}>=</button>
+
+      <div className="grid grid-cols-4 gap-3 w-full">
+        {[
+          "7", "8", "9", "/",
+          "4", "5", "6", "*",
+          "1", "2", "3", "-",
+          "0", ".", "⌫", "+",
+          "(", ")", "C"
+        ].map((btn) => (
+          <button
+            key={btn}
+            onClick={() => {
+              if (btn === "C") {
+                setInput("");
+                setResultado(0);
+              } else if (btn === "⌫") {
+                borrarUltimo();
+              } else {
+                handleButtonClick(btn);
+              }
+            }}
+            className="bg-white hover:bg-blue-100 text-xl text-gray-800 py-3 rounded-lg shadow"
+          >
+            {btn}
+          </button>
+        ))}
+        <button
+          onClick={calcularResultado}
+          className="col-span-4 bg-blue-500 hover:bg-blue-600 text-white text-xl py-3 rounded-lg shadow mt-2"
+        >
+          =
+        </button>
       </div>
-      <h3>Resultado: {resultado}</h3>
+
+      <h3 className="text-xl text-gray-700">Resultado: {resultado}</h3>
+
+      {historial.length > 0 && (
+        <div className="w-full mt-4">
+          <h4 className="text-lg text-gray-600 mb-2">Historial:</h4>
+          <ul className="text-sm text-gray-700 space-y-1 max-h-40 overflow-y-auto pr-1">
+            {historial.map((op, idx) => (
+              <li key={idx} className="truncate">{op}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -182,7 +398,7 @@ function App() {
           <div className="flex-grow flex flex-col items-center justify-center">
             {version === 1 && <CalculadoraV1 />}
             {version === 2 && <CalculadoraV2 />}
-            {version === 3 && <h2 className="text-4xl text-white">Calculadora v3 en construcción...</h2>}
+            {version === 3 && <CalculadoraV3 />}
           </div>
         </>
       )}
